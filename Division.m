@@ -1,6 +1,8 @@
 %Data Division 
 %% set up structures and filters
 
+load('..\Data\subj_data.mat'); % import data
+
 %below_threshold = (signal < threshold);
 % first plot the sacrum data to find the point of turnd
 WT2 = fdesign.lowpass('Fp,Fst,Ap,Ast',8,12,10,60,62.5);

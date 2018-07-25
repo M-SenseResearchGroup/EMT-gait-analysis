@@ -1,4 +1,4 @@
-
+load('..\Data\subj_data.mat');
 
 %% Gait Code for Walk and Turn
 dWT = fdesign.lowpass('Fp,Fst,Ap,Ast',2,14,10,60,62.5)
