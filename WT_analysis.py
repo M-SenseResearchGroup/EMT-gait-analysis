@@ -10,7 +10,8 @@ import MC10py
 # from numpy import loadtxt
 # import matplotlib.pyplot as pl
 
-
-data = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL')
+# def load_mc10(study_dir, segment=True, sync=True, save=True, save_loc=None, save_subj=False, return_data=True):
+paths = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL', segment=True,
+                        sync=True, save=True, save_loc='import', save_subj=False, return_data=False)
 
 # bl, al = butter(1, 8/62.5, 'lowpass')  # half order since will use filtfilt
