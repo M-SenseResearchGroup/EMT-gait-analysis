@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.stats as stats
 import pickle
+from statsmodels.stats import multicomp
 import matplotlib.pyplot as pl
+
 
 def import_stuff():
     path = 'C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\Stair Climb Results\\Results.csv'
@@ -224,11 +226,21 @@ def rmANOVA(data):
 
 metrics = ['step length', 'lateral deviation', 'step height', 'max swing velocity', 'foot attack angle', 'contact time',
            'step time', 'cadence']
-for mm, met in zip(range(8), metrics):
+for mm, met in zip(range(4, 5), metrics[4:5]):
     uavg = avg_stuff(comb, subjs, 'up', m=mm)
     davg = avg_stuff(comb, subjs, 'down', m=mm)
 
-    Fu, pu, eu = rmANOVA(uavg)
-    Fd, pd, ed = rmANOVA(davg)
+    for i in range(4):
+        for j in range(4):
+            if i != j:
+                _, pu = stats.ttest_rel(uavg[:, i], uavg[:, j])
+                _, pd = stats.ttest_rel(davg[:, i], davg[:, j])
 
-    print(f'{met:19s}   Up: p={pu:.3f} eta^2={eu:.4f}   Down: p={pd:.3f} eta^2={ed:.4f}')
+                print(met, i, j, f'{pu:.3f}  {pd:.3f}')
+                if pd<0.1:
+                    print(np.mean(uavg[:, i]), np.mean(uavg[:, j]))
+
+    # Fu, pu, eu = rmANOVA(uavg)
+    # Fd, pd, ed = rmANOVA(davg)
+    #
+    # print(f'{met:19s}   Up: p={pu:.3f} eta^2={eu:.4f}   Down: p={pd:.3f} eta^2={ed:.4f}')
