@@ -12,8 +12,8 @@ sensors = {'anterior_thigh_right','anterior_thigh_left','dorsal_foot_left',...
 s_short = {'atr','atl','dfl','dfr','mdc','lsl','lsr','scm'};
 
 %first check if the saved data file exists
-if exist('subj_data.mat','file')==2
-   load('subj_data.mat'); %if yes, load it
+if exist('..\Data\subj_data.mat','file')==2
+   load('..\Data\subj_data.mat'); %if yes, load it
 else %if not import all the data
     for i= [1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21]
         %base file name
