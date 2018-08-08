@@ -1,7 +1,7 @@
 load('..\Data\subj_data.mat');
 
 %% Gait Code for Walk and Turn
-dWT = fdesign.lowpass('Fp,Fst,Ap,Ast',2,14,10,60,62.5)
+dWT = fdesign.lowpass('Fp,Fst,Ap,Ast',2,14,10,60,62.5);
 HdWT = design(dWT,'butter');
 
 for i=1:length(subj)
