@@ -17,7 +17,7 @@ from matplotlib.patches import Patch
 # paths = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL', segment=True,
 #                         sync=True, save=True, save_loc='import', save_subj=False, return_data=False)
 
-data = MC10py.OpenMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL\\data.pickle')
+raw_data = MC10py.OpenMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL\\data.pickle')
 
 # plot walk and turn data for each subject
 
@@ -92,86 +92,108 @@ def turn_detect(data, plot=False):
     return ret_data
 
 
-spld = turn_detect(data, plot=False)  # split data about turn
+def extract_gait_params(data, plot=False):
+    gait = {i: {j: dict() for j in data[i].keys()} for i in data.keys()}
 
-gait = {i: {j: dict() for j in spld[i].keys()} for i in spld.keys()}
-# b, a = signal.iirdesign(2/62.5, 14/62.5, 2, 40, ftype='butter')
+    pl.close('all')
+    for sub in data.keys():
+        if plot:
+            f, ax = pl.subplots(nrows=4, ncols=2, figsize=(16, 9))
+            f.suptitle(f'Subject {sub}')
+        n = 0  # figure tracking (for events)
+        for ev in data[sub].keys():
+            m = 0  # figure tracking (for left/right)
+            gait[sub][ev] = dict()
+            sens = 'proximal_lateral_shank'
+            for side in ['left', 'right']:
+                gait[sub][ev][side] = dict()
+                loc = sens + '_' + side
 
-pl.close('all')
-for sub in spld.keys():
-    f, ax = pl.subplots(nrows=4, ncols=2, figsize=(16, 9))
-    f.suptitle(f'Subject {sub}')
-    n = 0  # figure tracking (for events)
-    for ev in spld[sub].keys():
-        m = 0  # figure tracking (for left/right)
-        for loc in ['proximal_lateral_shank_left', 'proximal_lateral_shank_right']:
-            time = spld[sub][ev]['gyro']['1'][loc][:, 0]
+                time = data[sub][ev]['gyro']['1'][loc][:, 0]
 
-            wave = 'mexh'
-            coefs, freq = pywt.cwt(spld[sub][ev]['gyro']['1'][loc][:, 3], np.arange(1, 65), wave,
-                                   sampling_period=1/62.5)
+                wave = 'mexh'
+                coefs, freq = pywt.cwt(data[sub][ev]['gyro']['1'][loc][:, 3], np.arange(1, 65), wave,
+                                       sampling_period=1 / 62.5)
 
-            m_ind = np.argmax(abs(coefs[5, :]))
-            mc = np.mean(abs(coefs[5, :]))
-            if coefs[5, m_ind] < 0:
-                pks, _ = signal.find_peaks(-coefs[5, :], height=mc, distance=25)
-            else:
-                pks, _ = signal.find_peaks(coefs[5, :], height=mc, distance=25)
-
-            # rough cadence frequency
-            cf = 1/(np.mean(np.diff(time[pks]))/1000)
-            ic = np.argmin(abs(freq-(2 * cf)))
-
-            mc = np.mean(abs(coefs[ic, :]))
-            if coefs[5, m_ind] < 0:
-                lmx, _ = signal.find_peaks(-coefs[ic, :], height=mc, distance=25)
-                lmn, _ = signal.find_peaks(coefs[ic, :], distance=25)
-            else:
-                lmx, _ = signal.find_peaks(coefs[ic, :], height=mc, distance=25)
-                lmn, _ = signal.find_peaks(-coefs[ic, :], distance=25)
-
-            _tr = []
-            for pk in lmx:
-                clind = np.argmin(abs(lmn-pk))
-                if lmn[clind] < pk:
-                    _tr.append(lmn[clind])
-                    try:
-                        _tr.append(lmn[clind+1])
-                    except:
-                        pass
+                m_ind = np.argmax(abs(coefs[5, :]))
+                mc = np.mean(abs(coefs[5, :]))
+                if coefs[5, m_ind] < 0:
+                    pks, _ = signal.find_peaks(-coefs[5, :], height=mc, distance=25)
                 else:
-                    _tr.append(lmn[clind-1])
-                    _tr.append(lmn[clind])
-            tr = np.unique(_tr)
+                    pks, _ = signal.find_peaks(coefs[5, :], height=mc, distance=25)
 
-            _ext = np.append(tr, lmx)
-            _extt = np.append(['min']*len(tr), ['max']*len(lmx))
+                # rough cadence frequency
+                cf = 1 / (np.mean(np.diff(time[pks])) / 1000)
+                ic = np.argmin(abs(freq - (2 * cf)))
 
-            srt = np.argsort(_ext)
-            ext = _ext[srt]
-            extt = _extt[srt]
+                mc = np.mean(abs(coefs[ic, :]))
+                if coefs[5, m_ind] < 0:
+                    lmx, _ = signal.find_peaks(-coefs[ic, :], height=mc, distance=25)
+                    lmn, _ = signal.find_peaks(coefs[ic, :], distance=25)
+                else:
+                    lmx, _ = signal.find_peaks(coefs[ic, :], height=mc, distance=25)
+                    lmn, _ = signal.find_peaks(-coefs[ic, :], distance=25)
 
-            stance = []
-            swing = []
-            for i in range(len(ext)-2):
-                if extt[i] == 'min' and extt[i+1] == 'max':
-                    swing.append((ext[i], ext[i+2]))
-                elif extt[i] == 'min' and extt[i+1] == 'min':
-                    stance.append((ext[i], ext[i+1]))
+                gait[sub][ev][side]['step time'] = np.diff(time[lmx])/1000  # still have to convert to seconds
+                _tr = []
+                for pk in lmx:
+                    clind = np.argmin(abs(lmn - pk))
+                    if lmn[clind] < pk:
+                        _tr.append(lmn[clind])
+                        try:
+                            _tr.append(lmn[clind + 1])
+                        except:
+                            pass
+                    else:
+                        _tr.append(lmn[clind - 1])
+                        _tr.append(lmn[clind])
+                tr = np.unique(_tr)
 
-            for st in stance:
-                ax[n, m].plot(time[st[0]:st[1]], coefs[ic, st[0]:st[1]], linewidth=8, alpha=0.4, color='r')
-            for sw in swing:
-                ax[n, m].plot(time[sw[0]:sw[1]], coefs[ic, sw[0]:sw[1]], linewidth=8, alpha=0.4, color='g')
+                _ext = np.append(tr, lmx)
+                _extt = np.append(['min'] * len(tr), ['max'] * len(lmx))
 
-            ax[n, m].plot(time, spld[sub][ev]['gyro']['1'][loc][:, 3], alpha=0.6)
-            line1, = ax[n, m].plot(time, coefs[ic, :], label=f'{freq[ic]:.1f} Hz')
-            ax[n, m].set_title(f'{ev}\n{loc}')
+                srt = np.argsort(_ext)
+                ext = _ext[srt]
+                extt = _extt[srt]
 
-            red = Patch(color='r', alpha=0.4, label='Stance')
-            green = Patch(color='g', alpha=0.4, label='Swing')
-            ax[n, m].legend(handles=[line1, red, green])
-            m += 1
-        n += 1
+                stance = []
+                swing = []
+                gait[sub][ev][side]['stance time'] = []
+                gait[sub][ev][side]['swing time'] = []
+                for i in range(len(ext) - 2):
+                    if extt[i] == 'min' and extt[i + 1] == 'max':
+                        swing.append((ext[i], ext[i + 2]))
+                        gait[sub][ev][side]['swing time'].append(time[ext[i+2]] - time[ext[i]])
+                    elif extt[i] == 'min' and extt[i + 1] == 'min':
+                        stance.append((ext[i], ext[i + 1]))
+                        gait[sub][ev][side]['stance time'].append(time[ext[i+1]] - time[ext[i]])
 
-    f.tight_layout()
+                gait[sub][ev][side]['stance time'] = np.asarray(gait[sub][ev][side]['stance time'])
+                gait[sub][ev][side]['swing time'] = np.asarray(gait[sub][ev][side]['swing time'])
+
+                if plot:
+                    for st in stance:
+                        ax[n, m].plot(time[st[0]:st[1]], coefs[ic, st[0]:st[1]], linewidth=8, alpha=0.4, color='r')
+                    for sw in swing:
+                        ax[n, m].plot(time[sw[0]:sw[1]], coefs[ic, sw[0]:sw[1]], linewidth=8, alpha=0.4, color='g')
+
+                    ax[n, m].plot(time, data[sub][ev]['gyro']['1'][loc][:, 3], alpha=0.6)
+                    line1, = ax[n, m].plot(time, coefs[ic, :], label=f'{freq[ic]:.1f} Hz')
+                    ax[n, m].set_title(f'{ev}\n{loc}')
+
+                    red = Patch(color='r', alpha=0.4, label='Stance')
+                    green = Patch(color='g', alpha=0.4, label='Swing')
+                    ax[n, m].legend(handles=[line1, red, green])
+                m += 1
+            n += 1
+
+        if plot:
+            f.tight_layout()
+
+    return gait
+
+
+spld = turn_detect(raw_data, plot=False)  # split data about turn
+
+
+gp = extract_gait_params(spld, plot=False)
