@@ -14,10 +14,10 @@ import matplotlib.pyplot as pl
 from matplotlib.patches import Patch
 
 # def load_mc10(study_dir, segment=True, sync=True, save=True, save_loc=None, save_subj=False, return_data=True):
-# paths = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL', segment=True,
-#                         sync=True, save=True, save_loc='import', save_subj=False, return_data=False)
+paths = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL', pre_time=0,
+                        segment=True, sync=True, save=True, save_loc='import', save_subj=False, return_data=False)
 
-raw_data = MC10py.OpenMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL\\data.pickle')
+# raw_data = MC10py.OpenMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL\\data.pickle')
 
 # plot walk and turn data for each subject
 
@@ -193,7 +193,7 @@ def extract_gait_params(data, plot=False):
     return gait
 
 
-spld = turn_detect(raw_data, plot=False)  # split data about turn
-
-
-gp = extract_gait_params(spld, plot=False)
+# spld = turn_detect(raw_data, plot=False)  # split data about turn
+#
+#
+# gp = extract_gait_params(spld, plot=False)

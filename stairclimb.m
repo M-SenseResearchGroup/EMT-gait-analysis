@@ -1,8 +1,10 @@
 %% Stair Climb Task
 %Load Data
-load('Lsubj_data_1min.mat')
+%load('C:\Users\Lukas Adamowicz\Documents\Study Data\EMT\Lsubj_data\Lsubj_data.mat')
+load('C:\Users\Lukas Adamowicz\Dropbox\Masters\Project - EMT Study\Gait Analysis\Data\subj_data.mat', 'subj*')
+subjL = subj;
 
-i=14;%subject
+i=1;%subject
 zed_thresh=1.25;
 min_stance_time = 0.03; %min seconds in stance
 swing_thresh = 2;
@@ -23,11 +25,11 @@ footside=[];
 
 for bagtype=1%:4
     
-    activitytype=2;
+    activitytype=3;
     bag={'hb','lb','hs','ls'};
     activity={'bsb','rc','wt'};
     
-    %% Load Data
+    % Load Data
     % time
     tsa = subjL(i).(cell2mat(activity(activitytype))).(cell2mat(bag(bagtype))).scm.a(:,1)/1000;
     % gyro sacrum data
@@ -37,11 +39,11 @@ for bagtype=1%:4
     % Sacrum RMS Gyro
     gmagsa=sqrt(sum((gsa(:,:)).^2,2));
     %
-    figure;
-    plot(tsa(tsa>=(tsa(1)+100)),gsa(tsa>=(tsa(1)+100),2))
-    hold on
-    plot(tsa(tsa>=(tsa(1)+100)),gmagsa(tsa>=(tsa(1)+100)))
-    RCtimes=ginput(8);
+%     figure;
+%     plot(tsa(tsa>=(tsa(1)+100)),gsa(tsa>=(tsa(1)+100),2))
+%     hold on
+%     plot(tsa(tsa>=(tsa(1)+100)),gmagsa(tsa>=(tsa(1)+100)))
+    %RCtimes=ginput(8);
     
     %lowpass filter
     lpsa = fdesign.lowpass('Fp,Fst,Ap,Ast',3,10,40,90,62.5);
@@ -52,19 +54,36 @@ for bagtype=1%:4
     gmaglpmm1sa = movmedian(gmaglpsa,200);
     gmaglpmmsa = movmedian(gmaglpmm1sa,300);
     
+    %Alternate filter
+%     wo = 2/31.25;
+%     bw = wo/1;
+%     [b, a] = iirnotch(wo, .7);
+
+%     [b, a] = ellip(5, 2, 20, 1.5/31.25);
+%     freqz(b, a);
+%     alt = filtfilt(b, a, gmagsa);
+    alt1 = movmean(gmaglpsa, 200);
+    alt = movmean(alt1, 300);
+    
     % Indexes for activity
     standind=gmaglpmmsa<6;
     
     
-    %figure;
-    %plot(tsa,gsa(:,2))
-    %hold on
-    %plot(tsa,gmagsa)
-    %hold on
-    %plot(tsa(standind),gmagsa(standind),'b*')
-    %hold on
-    %plot(tsa(walkind),gmagsa(walkind),'r*')
-    
+    figure;
+    plot(tsa,gmagsa)
+    hold on
+%     plot(tsa,gmaglpsa, 'linewidth', 3)
+    plot(tsa, gmaglpmmsa, 'linewidth', 3)
+    plot(tsa, alt, 'linewidth', 3)
+    legend('mag', 'Lara filt', 'alt filt')
+    hold on
+    plot(tsa(standind),gmagsa(standind),'b*')
+    hold on
+%     plot(tsa(walkind),gmagsa(walkind),'r*')
+end
+
+%%
+for i=1
     %Find Times Standing
     standtime=tsa(standind);
     standstart=standtime(1);
