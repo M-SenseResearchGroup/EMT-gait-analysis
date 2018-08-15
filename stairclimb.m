@@ -134,11 +134,13 @@ for i=1
         
         
         %% "Euclidian Distance" from still
+        % calculate z-score.  returns a 1D array
         zscorea=zscore([aF(:,1)-grav(1);aF(:,2)-grav(2);aF(:,3)-grav(3)]);
         zscoreg=zscore([gF(:,1)-gyro_bias(1);gF(:,2)-gyro_bias(2);gF(:,3)-gyro_bias(3)]);
         
-        len=length(aF(:,1));
+        len=length(aF(:,1));  % original length of gravity vector
         
+        % put the vector back into a Nx3 array
         za=[zscorea(1:len),zscorea(1+len:len+len),zscorea(1+len+len:len+len+len)];
         zg=[zscoreg(1:len),zscoreg(1+len:len+len),zscoreg(1+len+len:len+len+len)];
         
