@@ -408,7 +408,7 @@ for i=1
                         % Extract gait parameters
                         start_ind = gait_inds(end,1); %1st Foot Strike
                         stop_ind = gait_inds(end,3); %2nd Foot Strike
-                        fs_ind = gait_inds(end,3);
+                        fs_ind = gait_inds(end,3);  
                         fs_ind_rel = fs_ind - start_ind + 1; %location of fs
                         ind_step = start_ind:stop_ind;
                         

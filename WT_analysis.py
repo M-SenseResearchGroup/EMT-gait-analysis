@@ -14,10 +14,10 @@ import matplotlib.pyplot as pl
 from matplotlib.patches import Patch
 
 # def load_mc10(study_dir, segment=True, sync=True, save=True, save_loc=None, save_subj=False, return_data=True):
-paths = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL', pre_time=0,
-                        segment=True, sync=True, save=True, save_loc='import', save_subj=False, return_data=False)
+# paths = MC10py.LoadMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL', pre_time=0,
+#                         segment=True, sync=True, save=True, save_loc='import', save_subj=False, return_data=False)
 
-# raw_data = MC10py.OpenMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL\\data.pickle')
+raw_data = MC10py.OpenMC10('C:\\Users\\Lukas Adamowicz\\Documents\\Study Data\\EMT\\ASYM_OFFICIAL\\data.pickle')
 
 # plot walk and turn data for each subject
 
@@ -40,6 +40,7 @@ def turn_detect(data, plot=False):
                 if 'Walk and Turn' in ev:
                     ret_data[sub][ev] = {'gyro': {'1': dict(), '2': dict()}, 'accel': {'1': dict(), '2': dict()}}
                     iz = np.argmax(abs(np.mean(data[sub]['sacrum']['accel'][ev][:100, 1:], axis=0))) + 1  # z axis index
+                    print(iz)
                     time = data[sub]['sacrum']['gyro'][ev][:, 0]
 
                     fd = abs(signal.filtfilt(wdb, wda, data[sub]['sacrum']['gyro'][ev][:, iz]))
@@ -81,10 +82,10 @@ def turn_detect(data, plot=False):
                             ret_data[sub][ev]['gyro']['2'][loc] = data[sub][loc]['gyro'][ev][it[1]:it[2], :]
 
                     if plot:
-                        ax[i].plot(ret_data[sub][ev]['gyro']['1'][:, 0], ret_data[sub][ev]['gyro']['1'][:, iz],
-                                   alpha=0.5, linewidth=5, color='r')
-                        ax[i].plot(ret_data[sub][ev]['gyro']['2'][:, 0], ret_data[sub][ev]['gyro']['2'][:, iz],
-                                   alpha=0.5, linewidth=5, color='r')
+                        ax[i].plot(ret_data[sub][ev]['gyro']['1']['sacrum'][:, 0],
+                                   ret_data[sub][ev]['gyro']['1']['sacrum'][:, iz], alpha=0.5, linewidth=5, color='r')
+                        ax[i].plot(ret_data[sub][ev]['gyro']['2']['sacrum'][:, 0],
+                                   ret_data[sub][ev]['gyro']['2']['sacrum'][:, iz], alpha=0.5, linewidth=5, color='r')
                     i += 1
         except KeyError:
             pass
@@ -193,7 +194,7 @@ def extract_gait_params(data, plot=False):
     return gait
 
 
-# spld = turn_detect(raw_data, plot=False)  # split data about turn
+spld = turn_detect(raw_data, plot=False)  # split data about turn
 #
 #
 # gp = extract_gait_params(spld, plot=False)
