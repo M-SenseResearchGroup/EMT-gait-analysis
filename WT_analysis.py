@@ -194,7 +194,7 @@ def extract_gait_params(data, plot=False):
     return gait
 
 
-spld = turn_detect(raw_data, plot=False)  # split data about turn
+# spld = turn_detect(raw_data, plot=False)  # split data about turn
 #
 #
 # gp = extract_gait_params(spld, plot=False)
