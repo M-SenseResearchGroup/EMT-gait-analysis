@@ -43,7 +43,6 @@ for i=[1,2,4:23]%subject
             aS_all = data.(subject{i}).(shin{j}).accel*9.8; % Accelerations in sensor frame (m/s^2).
             gS_all = data.(subject{i}).(shin{j}).gyro; % Rates of turn in sensor frame.
         
-        
         %Truncate
             %foot
             aF = aF_all(tF_all>=startTime & tF_all<=endTime,:);
@@ -64,8 +63,38 @@ for i=[1,2,4:23]%subject
                 
         % sampling rate
             fs = 1/mean(diff(tF));
-
-        %% "Euclidian Distance" from still   
+   
+        %% Detect HS and toe off for data segmentation
+        %lowpass filter
+        fc = 7; % Cut off frequency
+        [b,a] = butter(2,fc/(fs/2)); % Butterworth filter of order 2
+        if j==1
+            gSfilt = filtfilt(b,a,gS(:,3));
+        else
+            gSfilt = filtfilt(b,a,-gS(:,3));
+        end
+        
+        [pkss,locss] = findpeaks(gSfilt,tS,'MinPeakHeight',85); %swing Peaks
+        [pksh,locsh] = findpeaks(-gSfilt,tS,'MinPeakProminence',8);%,'MinPeakHeight',20); %HS TO Peaks
+                 
+         %find HS and TO
+         HS=[];
+         TO=[];
+         HS_pks=[];
+         TO_pks=[];
+         for kk=2:length(locss)
+                 candidates = locsh(locsh>locss(kk-1) & locsh<locss(kk));
+                 candidates_pks = -pksh(locsh>locss(kk-1) & locsh<locss(kk));
+                 if length(candidates)>1
+                     HS = [HS;candidates(1)];
+                     HS_pks = [HS_pks;candidates_pks(1)];
+                     TO = [TO;candidates(end)];
+                     TO_pks = [TO_pks;candidates_pks(end)];
+                 end
+         end
+         
+         
+          %% "Euclidian Distance" from still   
         zscorea=zscore([aF(:,1)-grav(1);aF(:,2)-grav(2);aF(:,3)-grav(3)]);
         zscoreg=zscore([gF(:,1)-gyro_bias(1);gF(:,2)-gyro_bias(2);gF(:,3)-gyro_bias(3)]);
 
@@ -85,50 +114,7 @@ for i=[1,2,4:23]%subject
 % % %         hold on
 % % %         plot(tF(zind),zed(zind),'*')
 % % %         fprintf('ZUPTs\n')
-        
-        %% Detect HS and toe off for data segmentation
-        %lowpass filter
-        fc = 7; % Cut off frequency
-        [b,a] = butter(2,fc/(fs/2)); % Butterworth filter of order 2
-        if j==1
-            gSfilt = filtfilt(b,a,gS(:,3));
-        else
-            gSfilt = filtfilt(b,a,-gS(:,3));
-        end
-        
-        [pkss,locss] = findpeaks(gSfilt,tS,'MinPeakHeight',85); %swing Peaks
-        [pksh,locsh] = findpeaks(-gSfilt,tS,'MinPeakProminence',8);%,'MinPeakHeight',20); %HS TO Peaks
-        
-       
-%          figure;
-%          plot(tS,gSfilt)
-%          hold on
-%          plot(locss,pkss,'*k')
-%          plot(locsh,-pksh,'*b')
 
-
-        %cwt(gSfilt);
-         %plot(tS,gS(:,3))
-         %hold on
-         %figure; 
-         
-         
-%         
-%         %find hs and to
-         HS=[];
-         TO=[];
-         HS_pks=[];
-         TO_pks=[];
-         for kk=2:length(locss)
-                 candidates = locsh(locsh>locss(kk-1) & locsh<locss(kk));
-                 candidates_pks = -pksh(locsh>locss(kk-1) & locsh<locss(kk));
-                 if length(candidates)>1
-                     HS = [HS;candidates(1)];
-                     HS_pks = [HS_pks;candidates_pks(1)];
-                     TO = [TO;candidates(end)];
-                     TO_pks = [TO_pks;candidates_pks(end)];
-                 end
-         end
            figure;
           plot(tS,gSfilt)
           hold on
