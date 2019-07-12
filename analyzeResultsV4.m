@@ -3,7 +3,7 @@
 % Lara Weed
 % 6 Dec 2019
 %%
-load tempStep
+%load tempStep
 %load tempStepBig
 %% Create indices
 A=stepT.Type_Activity=='A';

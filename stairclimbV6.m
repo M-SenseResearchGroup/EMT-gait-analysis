@@ -29,12 +29,51 @@ error_2 = [];
 for i=[1,2,4:23]%subject  
     startTime = str2double(data.(subject{i}).annotations.StartTimestamp_ms_(1))/1000;
     calendTime = str2double(data.(subject{i}).annotations.StopTimestamp_ms_(1))/1000;
+    wt_cal_start = str2double(data.(subject{i}).annotations.StartTimestamp_ms_(find(strcmp(data.S01.annotations.EventType,'Walk and Turn'),1)))/1000;
+    wt_cal_end = str2double(data.(subject{i}).annotations.StopTimestamp_ms_(find(strcmp(data.S01.annotations.EventType,'Walk and Turn'),1)))/1000;    
     endTime = str2double(data.(subject{i}).annotations.StopTimestamp_ms_(end))/1000;
     subTrials = T(strcmp(T.Subject,subject{i}),:);
+    
+     %% Torso
+        % Load data
+         tT_all = data.(subject{i}).medial_chest.time/1000; % Timestamps of measurements (seconds)
+         aT_all = data.(subject{i}).medial_chest.accel*9.8; % Accelerations in sensor frame (m/s^2).
+         gT_all = data.(subject{i}).medial_chest.gyro; % Rates of turn in sensor frame.
+
+        % Truncate Torso
+         aT = aT_all(tT_all>=startTime & tT_all<=endTime,:);
+         gT = gT_all(tT_all>=startTime & tT_all<=endTime,:);
+         tT = tT_all(tT_all>=startTime & tT_all<=endTime,:); 
+         dtT = [diff(tT);0];
+         mean_cal = mean(aT(tT<=calendTime,:));
+         
+         aT_RMS = sqrt(sum((aT-mean_cal).^2,2));
+    
+        % Rotate Torso
+            % Type 1- rotate grave vec during standing, pca during walking
+             rotTor_aa = vrrotvec(mean_cal,[0 0 1]);
+             rotTor_mat = vrrotvec2mat(rotTor_aa);
+             aTp = (rotTor_mat*aT')'; %aTp(:,3) = vertical, aTp(:,1:2) = hz plane. Note: do not use hz axes independently          
+             
+%             figure
+%             p1 = subplot(2,1,1);
+%             plot(tT,aT_RMS)
+%             title(sprintf('Subject %d Torso',i)) 
+% %             p2 = subplot(3,1,2);
+% %             %plot(tT,aTp);%_1)
+% %             %hold on
+% %             plot(tT,aT_1)
+%             p3 = subplot(2,1,2);
+%             plot(tT,aTp)
+%             linkaxes([p1 p3],'x')
+            
+             
+             
+    
     for j=1:2 %Foot
         fprintf('%s::%s\n',subject{i},foot_side{j})
-        zed_thresh = 1.25;%sigs(sigs(:,1)==i & sigs(:,2)==j,3); 
-        sigma_v = sigs(sigs(:,1)==i & sigs(:,2)==j,4);
+        zed_thresh = 1.25; %sigs(sigs(:,1)==i & sigs(:,2)==j,3); %1.25;%sigs(sigs(:,1)==i & sigs(:,2)==j,3); 
+        
         %% set variables
             %foot
             if (i==6 && j==1) %sensors placed on wrong side for feet
@@ -50,15 +89,12 @@ for i=[1,2,4:23]%subject
                 aF_all = data.(subject{i}).(foot{j}).accel*9.8; % Accelerations in sensor frame (m/s^2).
                 gF_all = data.(subject{i}).(foot{j}).gyro; % Rates of turn in sensor frame.
             end
+            
             %shin
             tS_all = data.(subject{i}).(shin{j}).time/1000; % Timestamps of measurements (seconds)
             aS_all = data.(subject{i}).(shin{j}).accel*9.8; % Accelerations in sensor frame (m/s^2).
             gS_all = data.(subject{i}).(shin{j}).gyro; % Rates of turn in sensor frame.
         
-            %Torso
-            tT_all = data.(subject{i}).medial_chest.time/1000; % Timestamps of measurements (seconds)
-            aT_all = data.(subject{i}).medial_chest.accel*9.8; % Accelerations in sensor frame (m/s^2).
-            gT_all = data.(subject{i}).medial_chest.gyro; % Rates of turn in sensor frame.
         %% Truncate
             %foot
             aF = aF_all(tF_all>=startTime & tF_all<=endTime,:);
@@ -69,24 +105,13 @@ for i=[1,2,4:23]%subject
             aS = aS_all(tS_all>=startTime & tS_all<=endTime,:);
             gS = gS_all(tS_all>=startTime & tS_all<=endTime,:);
             tS = tS_all(tS_all>=startTime & tS_all<=endTime,:);
-            
-            %Torso
-            aT = aT_all(tT_all>=startTime & tT_all<=endTime,:);
-            gT = gT_all(tT_all>=startTime & tT_all<=endTime,:);
-            tT = tT_all(tT_all>=startTime & tT_all<=endTime,:);
         
-        %% set gravity for foot
-            g = mean(sqrt(sum(aF(tF<=calendTime,:).^2,2))); 
-            grav = mean(aF(tF<=calendTime,:));
-                
-        %% Gyroscope bias for foot      
-            gyro_bias= mean(gF(tF<=calendTime,:))'*pi/180;
-                
+        
         %%  sampling rate for foot
             fs = 1/mean(diff(tF));
    
         %% Data Segmentation
-        %uses mediolateral shank gyro to find HS and TO
+        % uses mediolateral shank gyro to find HS and TO
             %% lowpass filter
                 fc = 7; % Cut off frequency
                 [b,a] = butter(2,fc/(fs/2)); % Butterworth filter of order 2
@@ -99,7 +124,7 @@ for i=[1,2,4:23]%subject
                 [pkss,locss] = findpeaks(gSfilt,tS,'MinPeakHeight',85); %swing Peaks
                 [pksh,locsh] = findpeaks(-gSfilt,tS,'MinPeakProminence',3); %HS TO Peaks
 
-            %% find HS and TO
+        %% find HS and TO
                 %set variables
                 HS=[];
                 TO=[];
@@ -129,26 +154,7 @@ for i=[1,2,4:23]%subject
                 gait_events = sortrows(temp_ge);%1=HS, 0=TO
                 
 
-                % check with plot
-                %figure;
-                %plot(tS,gSfilt)
-                %hold on
-                %plot(HS,HS_pks,'*m')        
-                %plot(TO,TO_pks,'*g')
-                %% check number of steps
-% %                 NumSteps_HB_RC = [NumSteps_HB_RC;sum(HS>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(1)&HS<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(4)),sum(HS>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(5)&HS<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(8))];
-% %                 NumSteps_LB_RC = [NumSteps_LB_RC;sum(HS>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(1)&HS<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(4)),sum(HS>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(5)&HS<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(8))];
-% %                 NumSteps_HS_RC = [NumSteps_HS_RC;sum(HS>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(1)&HS<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(4)),sum(HS>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(5)&HS<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(8))];
-% %                 NumSteps_LS_RC = [NumSteps_LS_RC;sum(HS>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(1)&HS<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(4)),sum(HS>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(5)&HS<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(8))];
-% % 
-% %                 NumSteps_HB_WAT = [NumSteps_HB_WAT;sum(HS>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(1)&HS<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(2)),sum(HS>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(3)&HS<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(4))];
-% %                 NumSteps_LB_WAT = [NumSteps_LB_WAT;sum(HS>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(1)&HS<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(2)),sum(HS>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(3)&HS<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(4))];
-% %                 NumSteps_HS_WAT = [NumSteps_HS_WAT;sum(HS>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(1)&HS<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(2)),sum(HS>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(3)&HS<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(4))];
-% %                 NumSteps_LS_WAT = [NumSteps_LS_WAT;sum(HS>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(1)&HS<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(2)),sum(HS>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(3)&HS<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(4))];
-% % 
-% %                 NumSteps_Subject = [NumSteps_Subject;i];
-% %                 NumSteps_foot = [NumSteps_foot;j];
-            %% Swing Phase Logical
+        %% Swing Phase Logical
                 swingPhase = zeros(length(tF),1);
                 for hh = 1:length(TO)
                     if hh<length(TO)
@@ -173,6 +179,12 @@ for i=[1,2,4:23]%subject
         %% ZUPT Detection
         %Zero-velocity update detection using foot accleration and gyro
             %% "Euclidian Distance" from still  
+                % set gravity for foot
+                grav = mean(aF(tF<=calendTime,:));
+                
+                % Gyroscope bias for foot      
+                gyro_bias= mean(gF(tF<=calendTime,:))'*pi/180;
+                
                 %z-score accel and gyro metrics so they have equal scale on
                 %all axes
                 zscorea=zscore([aF(:,1)-grav(1);aF(:,2)-grav(2);aF(:,3)-grav(3)]);
@@ -188,351 +200,112 @@ for i=[1,2,4:23]%subject
 
                 % baseline zupt ind
                 zind=zed<zed_thresh & zed>-zed_thresh & ~swingPhase;%-min(zpks);
-                  
-                %%
-%                 zupt = zeros(length(tF),1);
-%                 win_dim=round(.5*fs);%number of timesteps in window
-%                 slide_dim = round(win_dim/2);%50percent overlap
-%                 num_stps=length(1:slide_dim:(size(aF,1)-win_dim)); %number of "slides", we need to subtract win_dim to avoid that the window will go over the signal 
-%                 for zz= 1:slide_dim:(size(aF,1)-win_dim)
-%                     slide_ind = zz:zz+win_dim -1;
-%                     a_slide = aF(slide_ind,:);
-%                     g_slide = gF(slide_ind,:);
-%                     z_slide = zed(slide_ind);
-%                     sp_slide = logical(swingPhase(slide_ind));
-%                     if sum(z_slide<=1.25)>0 
-%                         [val,ind] = sort(z_slide);
-%                         cand = val<=1.25;
-%                         val_cand = val(cand);
-%                         ind_cand = ind(cand);
-%                         %if length(val(cand)) == length(z_slide) % full window zupts (still)
-%                         %    zupt(zz:zz+win_dim -1)=1;
-%                         %else
-%                             zupt(zz+ind_cand(1)-1)=1;
-%                         %end
-%                     end
-%                     %find(z_slide == min(z_slide))  
-%                 end
-%                 zupt=logical(zupt);
-%                 figure;
-%                 plot(tF-tF(1),aF)
-%                 hold on
-%                 plot(tF(zupt)-tF(1),aF(zupt),'*')
-%                 title(sprintf('Subject %d::Foot %d',i,j));
-%                 
-               
-                        
-                        
-                        
-                   
                 
-                
-                
-                
-%                 figure;
-%                 p1 = subplot(1,2,1);
-%                 boxplot(zed(swingPhase))
-%                 title(sprintf('%s::%s',subject{i},foot_side{j}))
-%                 xlabel('Swing')
-%                 p2 = subplot(1,2,2);
-%                 boxplot(zed(~swingPhase))
-%                 xlabel('Not Swing')
-%                 linkaxes([p1 p2],'y')
-                
-                
-%                 if j==2
-%                     p1 = subplot(2,2,1);
-%                     hist(zed(swingPhase))
-%                     title(sprintf('%s::%s',subject{i},foot_side{j}))
-%                     ylabel('Swing')
-%                     p2 = subplot(2,2,3);
-%                     hist(zed(~swingPhase))
-%                     ylabel('Not Swing')
-%                     linkaxes([p1 p2 p3 p4],'xy')
-%                 else
-%                     figure;
-%                     p3 = subplot(2,2,2);
-%                     hist(zed(swingPhase))
-%                     title(sprintf('%s::%s',subject{i},foot_side{j}))
-%                     ylabel('Swing')
-%                     p4 = subplot(2,2,4);
-%                     hist(zed(~swingPhase))
-%                     ylabel('Not Swing')
-%                 end
-%                 
-
-        %%
-        % Plot for visual
-% % %          figure;
-% % %          plot(tS,gSfilt)
-% % %          plot(tF,zed)
-% % %         hold on
-% % %         plot(tF(zind),zed(zind),'*')
-% % %         fprintf('ZUPTs\n')
-
-%            figure;
-%           plot(tS,gSfilt)
-%           hold on
-%           plot(HS,HS_pks,'*m')        
-%           plot(TO,TO_pks,'*g')
-%           plot(tF,gF(:,3))
-%           plot(tF(zind),zed(zind),'*k')
-%           plot(tF,zed)
-%           hold on
-%         %plot(tF(zind),zed(zind),'*')
-%        %fprintf('ZUPTs\n')
-%            title(sprintf('Subject %d :: Foot %d',i,j))
-%            legend('Swing','HS','TO')
-%        
-         
-     % % figure;
-% % p1 = subplot(1,4,1);
-% % boxplot(NumSteps.NumSteps_HB_RC)
-% % ylabel('Steps RC')
-% % title('HB')
-% % xticklabels({'A','D'})
-% % p2 = subplot(1,4,2);
-% % boxplot(NumSteps.NumSteps_LB_RC)
-% % title('LB')
-% % xticklabels({'A','D'})
-% % p3 = subplot(1,4,3);
-% % boxplot(NumSteps.NumSteps_HS_RC)
-% % title('HS')
-% % xticklabels({'A','D'})
-% % p4 = subplot(1,4,4);
-% % boxplot(NumSteps.NumSteps_LS_RC)
-% % title('LS')
-% % xticklabels({'A','D'})
-% % linkaxes([p1 p2 p3 p4],'y')
-% % 
-% % figure;
-% % p1 = subplot(1,4,1);
-% % boxplot(NumSteps.NumSteps_HB_WAT)
-% % ylabel('Steps WAT')
-% % title('HB')
-% % xticklabels({'L1','L2'})
-% % p2 = subplot(1,4,2);
-% % boxplot(NumSteps.NumSteps_LB_WAT)
-% % title('LB')
-% % xticklabels({'L1','L2'})
-% % p3 = subplot(1,4,3);
-% % boxplot(NumSteps.NumSteps_HS_WAT)
-% % title('HS')
-% % xticklabels({'L1','L2'})
-% % p4 = subplot(1,4,4);
-% % boxplot(NumSteps.NumSteps_LS_WAT)
-% % title('LS')
-% % xticklabels({'L1','L2'})
-% % linkaxes([p1 p2 p3 p4],'y')
-
-        %% Transpose Foot Data for Kalman Filter
-        %Right Foot
-        acc_s=aF';
-        gyro_s=gF'*pi/180; %(rad/s)
-        timestamp=tF';
+        %% Pedestrian Tracking Kalman Filter
+            acc_s=aF';
+            gyro_s=gF'*pi/180; %(rad/s)
+            timestamp=tF';
+            cal_still = tF<=calendTime;
+            sigma_v = 0.001; %sigs(sigs(:,1)==i & sigs(:,2)==j,4);%.001;%sigs(sigs(:,1)==i & sigs(:,2)==j,4);%
     
-        % Set data size for kalman filter
-        data_size = length(acc_s); % Data size from foot
+            [ acc_n, vel_n, pos_n, heading, distance ] = KF_6dof( acc_s, gyro_s, timestamp, zind, sigma_v, cal_still );
 
-        %% Orientation from accelerometers. Sensor is assumed to be stationary.
-        r = vrrotvec(acc_s(:,1),[0 0 sqrt(sum(acc_s(:,1).^2))]);
-        C_prev = vrrotvec2mat(r);
+        %% check that KF is working
+            WATHB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(1),1);
+            WATHB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(4)));
+            WATHB_HZ = sqrt(sum((pos_n(1:2,WATHB_eind)-pos_n(1:2,WATHB_sind)).^2));
+            WATHB = sqrt(sum((pos_n(:,WATHB_eind)-pos_n(:,WATHB_sind)).^2));
 
-        % Preallocate storage for heading estimate. Different from direction of
-        % travel, the heading indicates the direction that the sensor, and therefore
-        % the pedestrian, is facing.
-        heading = nan(1, data_size);
-        heading(1) = 0;
+            WATLB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(1),1);
+            WATLB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(4)));
+            WATLB_HZ = sqrt(sum((pos_n(1:2,WATLB_eind)-pos_n(1:2,WATLB_sind)).^2));
+            WATLB = sqrt(sum((pos_n(:,WATLB_eind)-pos_n(:,WATLB_sind)).^2));
 
-        % Preallocate storage for accelerations in navigation frame.
-        acc_n = nan(3, data_size);
-        acc_n(:,1) = C_prev*acc_s(:,1);
+            WATHS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(1),1);
+            WATHS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(4)));
+            WATHS_HZ = sqrt(sum((pos_n(1:2,WATHS_eind)-pos_n(1:2,WATHS_sind)).^2));
+            WATHS = sqrt(sum((pos_n(:,WATHS_eind)-pos_n(:,WATHS_sind)).^2));
 
-        % Preallocate storage for velocity (in navigation frame).
-        % Initial velocity assumed to be zero.
-        vel_n = nan(3, data_size);
-        vel_n(:,1) = [0 0 0]';
+            WATLS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(1),1);
+            WATLS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(4)));
+            WATLS_HZ = sqrt(sum((pos_n(1:2,WATLS_eind)-pos_n(1:2,WATLS_sind)).^2));
+            WATLS = sqrt(sum((pos_n(:,WATLS_eind)-pos_n(:,WATLS_sind)).^2));
 
-        % Preallocate storage for position (in navigation frame).
-        % Initial position arbitrarily set to the origin.
-        pos_n = nan(3, data_size);
-        pos_n(:,1) = [0 0 0]';
+            RCHB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(1),1);
+            RCHB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(4)));
+            RCHB_HZ = sqrt(sum((pos_n(1:2,RCHB_eind)-pos_n(1:2,RCHB_sind)).^2));
+            RCHB = sqrt(sum((pos_n(:,RCHB_eind)-pos_n(:,RCHB_sind)).^2));
 
-        % Preallocate storage for distance travelled used for altitude plots.
-        distance = nan(1,data_size-1);
-        distance(1) = 0;
+            RCLB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(1),1);
+            RCLB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(4)));
+            RCLB_HZ = sqrt(sum((pos_n(1:2,RCLB_eind)-pos_n(1:2,RCLB_sind)).^2));
+            RCLB = sqrt(sum((pos_n(:,RCLB_eind)-pos_n(:,RCLB_sind)).^2));
 
-        % Error covariance matrix.
-        P = zeros(9);
-
-        % Process noise parameter, gyroscope and accelerometer noise.
-        sigma_omega = std(sqrt(sum(gF(tF<=calendTime,:).^2,2))*pi/180); 
-        sigma_a = std(sqrt(sum(aF(tF<=calendTime,:).^2,2)));
-        %sigma_v = std(sqrt(sum(aF(tF<=calendTime,:).^2,2)));
-        
-        % ZUPT measurement matrix.
-        H = [zeros(3) zeros(3) eye(3)];
-
-        R = diag([sigma_v sigma_v sigma_v]).^2;
-    
-%% Main Loop
-            for t = 2:data_size
-                %%% Start INS (transformation, double integration) %%%
-                dt = timestamp(t) - timestamp(t-1);%ms
-
-                % Remove bias from gyro measurements.
-                gyro_s1 = gyro_s(:,t) - gyro_bias;
-
-                % Skew-symmetric matrix for angular rates
-                ang_rate_matrix = [0   -gyro_s1(3)   gyro_s1(2);
-                                    gyro_s1(3)  0   -gyro_s1(1);
-                                    -gyro_s1(2)  gyro_s1(1)  0];
-
-                % orientation estimation
-                C = C_prev*(2*eye(3)+(ang_rate_matrix*dt))/(2*eye(3)-(ang_rate_matrix*dt));
-
-                % Transforming the acceleration from sensor frame to navigation frame.
-                acc_n(:,t) = 0.5*(C + C_prev)*acc_s(:,t);
-
-                % Velocity and position estimation using trapeze integration.
-                vel_n(:,t) = vel_n(:,t-1) + ((acc_n(:,t) - [0; 0; g] )+(acc_n(:,t-1) - [0; 0; g]))*dt/2;
-                pos_n(:,t) = pos_n(:,t-1) + (vel_n(:,t) + vel_n(:,t-1))*dt/2;
-
-                % Skew-symmetric cross-product operator matrix formed from the n-frame accelerations.
-                S = [0  -acc_n(3,t)  acc_n(2,t);
-                    acc_n(3,t)  0  -acc_n(1,t);
-                    -acc_n(2,t) acc_n(1,t) 0];
-
-                % State transition matrix.
-                F = [eye(3)  zeros(3,3)    zeros(3,3);
-                    zeros(3,3)   eye(3)  dt*eye(3);
-                    -dt*S  zeros(3,3)    eye(3) ];
-
-                % Compute the process noise covariance Q.
-                Q = diag([sigma_omega sigma_omega sigma_omega 0 0 0 sigma_a sigma_a sigma_a]*dt).^2;
-
-                % Propagate the error covariance matrix.
-                P = F*P*F' + Q;
-                %%% End INS %%%
-
-                % Stance phase detection and zero-velocity updates.
-                if zind(t)==1%zupt(t)==1%%zind(t)==1 % 
-
-                    K = (P*(H)')/((H)*P*(H)' + R); % Kalman gain.
-
-                    % Update the filter state.
-                    delta_x = K*(vel_n(:,t));%+[0; 0; Vzexpected(k)]);
-
-                    % Update the error covariance matrix.
-                    P = (eye(9) - K*H)*P; % Simplified covariance update found in most books.
-
-                    % Extract errors from the KF state.
-                    attitude_error = delta_x(1:3);
-                    pos_error = delta_x(4:6);
-                    vel_error = delta_x(7:9);
-                    %%% End Kalman filter zero-velocity update %%%
-
-                    %%% Apply corrections to INS estimates. %%%
-                    % Skew-symmetric matrix for small angles to correct orientation.
-                    ang_matrix = -[0   -attitude_error(3,1)   attitude_error(2,1);
-                        attitude_error(3,1)  0   -attitude_error(1,1);
-                        -attitude_error(2,1)  attitude_error(1,1)  0];
-
-                    % Correct orientation.
-                    C = (2*eye(3)+(ang_matrix))/(2*eye(3)-(ang_matrix))*C;
-
-                    % Correct position and velocity based on Kalman error estimates.
-                    vel_n(:,t)=vel_n(:,t)-vel_error;
-                    pos_n(:,t)=pos_n(:,t)-pos_error;
-                end
-
-                heading(t) = atan2(C(2,1), C(1,1)); % Estimate and save the yaw of the sensor (different from the direction of travel). Unused here but potentially useful for orienting a GUI correctly.
-                C_prev = C; % Save orientation estimate, required at start of main loop.
-
-                % Compute horizontal distance.
-                distance(1,t) = distance(1,t-1) + sqrt((pos_n(1,t)-pos_n(1,t-1))^2 + (pos_n(2,t)-pos_n(2,t-1))^2);
-            end
-             
-fprintf('     KF Done\n')
-% figure;
-% plot(pos_n')
-% title(sprintf('%d::%d',i,j))
-
-% figure;
-% plot3(pos_n(1,:),pos_n(2,:),pos_n(3,:));
-% title(sprintf('Subject %d :: Foot %d',i,j))
-% axis equal
-
-%% check that KF is working
-WATHB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(1),1);
-WATHB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(4)));
-WATHB_HZ = sqrt(sum((pos_n(1:2,WATHB_eind)-pos_n(1:2,WATHB_sind)).^2));
-WATHB = sqrt(sum((pos_n(:,WATHB_eind)-pos_n(:,WATHB_sind)).^2));
-
-WATLB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(1),1);
-WATLB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_WAT(4)));
-WATLB_HZ = sqrt(sum((pos_n(1:2,WATLB_eind)-pos_n(1:2,WATLB_sind)).^2));
-WATLB = sqrt(sum((pos_n(:,WATLB_eind)-pos_n(:,WATLB_sind)).^2));
-
-WATHS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(1),1);
-WATHS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_WAT(4)));
-WATHS_HZ = sqrt(sum((pos_n(1:2,WATHS_eind)-pos_n(1:2,WATHS_sind)).^2));
-WATHS = sqrt(sum((pos_n(:,WATHS_eind)-pos_n(:,WATHS_sind)).^2));
-
-WATLS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(1),1);
-WATLS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_WAT(4)));
-WATLS_HZ = sqrt(sum((pos_n(1:2,WATLS_eind)-pos_n(1:2,WATLS_sind)).^2));
-WATLS = sqrt(sum((pos_n(:,WATLS_eind)-pos_n(:,WATLS_sind)).^2));
-
-RCHB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(1),1);
-RCHB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_RC(4)));
-RCHB_HZ = sqrt(sum((pos_n(1:2,RCHB_eind)-pos_n(1:2,RCHB_sind)).^2));
-RCHB = sqrt(sum((pos_n(:,RCHB_eind)-pos_n(:,RCHB_sind)).^2));
-
-RCLB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(1),1);
-RCLB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LB',2)==2),:).SegmentTimes_RC(4)));
-RCLB_HZ = sqrt(sum((pos_n(1:2,RCLB_eind)-pos_n(1:2,RCLB_sind)).^2));
-RCLB = sqrt(sum((pos_n(:,RCLB_eind)-pos_n(:,RCLB_sind)).^2));
-
-RCHS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(1),1);
-RCHS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(4)));
-RCHS_HZ = sqrt(sum((pos_n(1:2,RCHS_eind)-pos_n(1:2,RCHS_sind)).^2));
-RCHS = sqrt(sum((pos_n(:,RCHS_eind)-pos_n(:,RCHS_sind)).^2));
+            RCHS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(1),1);
+            RCHS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HS',2)==2),:).SegmentTimes_RC(4)));
+            RCHS_HZ = sqrt(sum((pos_n(1:2,RCHS_eind)-pos_n(1:2,RCHS_sind)).^2));
+            RCHS = sqrt(sum((pos_n(:,RCHS_eind)-pos_n(:,RCHS_sind)).^2));
 
 
-RCLS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(1),1);
-RCLS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(4)));
-RCLS_HZ = sqrt(sum((pos_n(1:2,RCLS_eind)-pos_n(1:2,RCLS_sind)).^2));
-RCLS = sqrt(sum((pos_n(:,RCLS_eind)-pos_n(:,RCLS_sind)).^2));
+            RCLS_sind = find(tF>=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(1),1);
+            RCLS_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='LS',2)==2),:).SegmentTimes_RC(4)));
+            RCLS_HZ = sqrt(sum((pos_n(1:2,RCLS_eind)-pos_n(1:2,RCLS_sind)).^2));
+            RCLS = sqrt(sum((pos_n(:,RCLS_eind)-pos_n(:,RCLS_sind)).^2));
 
 
-DCheck_HZ = [DCheck_HZ; i,j,WATHB_HZ, WATLB_HZ, WATHS_HZ, WATLS_HZ, RCHB_HZ, RCLB_HZ, RCHS_HZ ,RCLS_HZ];
-DCheck = [DCheck; i,j,WATHB, WATLB, WATHS, WATLS, RCHB, RCLB, RCHS ,RCLS];
+            DCheck_HZ = [DCheck_HZ; i,j,WATHB_HZ, WATLB_HZ, WATHS_HZ, WATLS_HZ, RCHB_HZ, RCLB_HZ, RCHS_HZ ,RCLS_HZ];
+            DCheck = [DCheck; i,j,WATHB, WATLB, WATHS, WATLS, RCHB, RCLB, RCHS ,RCLS];
 
 
-
-   
-%%
-
-
-            %% Perform offline step detection and computation of gait parameters
+        %% Perform offline step detection and computation of gait parameters
             %Initialize variables
-            step_length = [];
-            lateral_dev = [];
-            step_height = [];
-            max_swing_vel = [];
-            foot_angle_strike = [];
-            foot_attack_angle = [];
-            contact_time = [];
-            step_time = [];
-            cadence = [];
-            foot_strike_time=[];
-            bag_type=[];
-            fside=[];
-            start_time = [];
-            end_time = [];
-            Type_Activity = [];
-            Subject = [];
+                %foot
+                step_length = [];
+                lateral_dev = [];
+                step_height = [];
+                max_swing_vel = [];
+                foot_angle_strike = [];
+                foot_attack_angle = [];
+                contact_time = [];
+                step_time = [];
+                cadence = [];
+                foot_strike_time=[];
+                fside=[];
+                start_time = [];
+                end_time = [];
+                
+                % Torso- RMS
+                mean_accel_torso = [];
+                max_accel_torso = [];
+                min_accel_torso = [];
+                std_accel_torso = [];
+                range_accel_torso = [];
+                skew_accel_torso = [];
+                kurt_accel_torso = [];
+                
+                % Torso- vertical
+                mean_accel_v_torso = [];
+                max_accel_v_torso = [];
+                min_accel_v_torso = [];
+                std_accel_v_torso = [];
+                range_accel_v_torso = [];
+                skew_accel_v_torso = [];
+                kurt_accel_v_torso = [];
+                
+                %Torso- Horizontal
+                mean_jerk_torso = [];
+                max_jerk_torso = [];
+                std_jerk_torso = [];
+                range_jerk_torso = [];
+                skew_jerk_torso = [];
+                kurt_jerk_torso = [];
+                path_length_torso =[];
+                path_length_3d_torso =[];
+                 
+                % Other
+                bag_type=[];
+                Type_Activity = [];
+                Subject = [];
 
                   figure;
             hold on; grid on; axis equal; view([0,-1,0]); xlabel('X'); ylabel('Y'); zlabel('Z');
@@ -540,6 +313,7 @@ DCheck = [DCheck; i,j,WATHB, WATLB, WATHS, WATLS, RCHB, RCLB, RCHS ,RCLS];
             %divide into steps
             for s=2:length(HS)
                 ind_step = tF>=HS(s-1) & tF<=HS(s);
+                ind_step_T = tT>=HS(s-1) & tT<=HS(s);
 
                 % Rotate so that step is primarily in the x-direction
                 coeff = pca(pos_n(1:2,ind_step).');
@@ -558,7 +332,7 @@ DCheck = [DCheck; i,j,WATHB, WATLB, WATHS, WATLS, RCHB, RCLB, RCHS ,RCLS];
                     vel_r = vel_r*R;
                 end
 
-                % Extract spatial variables
+                % Extract spatial foot variables
                 start_time = [start_time; HS(s)];
                 end_time = [end_time; HS(s)];
                 step_length = [step_length; pos_r(end,1)];
@@ -572,11 +346,36 @@ DCheck = [DCheck; i,j,WATHB, WATLB, WATHS, WATLS, RCHB, RCLB, RCHS ,RCLS];
                 step_time = [step_time; HS(s)-HS(s-1)];
                 cadence = [cadence; 60/(HS(s)-HS(s-1))];
                 
+                
                 % Extract Torso Acceleration Variables
-%                 torso_accel_HS = 
-%                 torso_accel_TO = 
-%                 torso_max_accel = 
-%                 torso_min_accel = 
+                 feat = torsoSigFeatsRMS(aT_RMS(ind_step_T));
+                 mean_accel_torso = [mean_accel_torso; feat(1)];
+                 max_accel_torso = [max_accel_torso; feat(2)];
+                 min_accel_torso = [min_accel_torso; feat(3)];
+                 std_accel_torso = [std_accel_torso; feat(4)];
+                 range_accel_torso = [range_accel_torso; feat(5)];
+                 skew_accel_torso = [skew_accel_torso; feat(6)];
+                 kurt_accel_torso = [kurt_accel_torso; feat(7)];
+                 
+                 feat = torsoSigFeatsRMS(aTp(ind_step_T,3));
+                 mean_accel_v_torso = [mean_accel_v_torso; feat(1)];
+                 max_accel_v_torso = [max_accel_v_torso; feat(2)];
+                 min_accel_v_torso = [min_accel_v_torso; feat(3)];
+                 std_accel_v_torso = [std_accel_v_torso; feat(4)];
+                 range_accel_v_torso = [range_accel_v_torso; feat(5)];
+                 skew_accel_v_torso = [skew_accel_v_torso; feat(6)];
+                 kurt_accel_v_torso = [kurt_accel_v_torso; feat(7)];
+                  
+                 feat = torsoSigFeatsRMS(.5*cumtrapz(((aTp(ind_step_T,1)./dtT(ind_step_T)).^2)+((aTp(ind_step_T,2)./dtT(ind_step_T)).^2)));
+                 mean_jerk_torso = [mean_jerk_torso; feat(1)];
+                 max_jerk_torso = [max_jerk_torso; feat(2)];
+                 std_jerk_torso = [std_jerk_torso; feat(4)];
+                 range_jerk_torso = [range_jerk_torso; feat(5)];
+                 skew_jerk_torso = [skew_jerk_torso; feat(6)];
+                 kurt_jerk_torso = [kurt_jerk_torso; feat(7)];
+                 path_length_torso =[path_length_torso;sqrt(sum(diff(aTp(ind_step_T,1)).^2+diff(aTp(ind_step_T,2)).^2))];
+                 path_length_3d_torso =[path_length_3d_torso;sqrt(sum(diff(aTp(ind_step_T,1)).^2+diff(aTp(ind_step_T,2)).^2+diff(aTp(ind_step_T,3)).^2))];
+              
 
                 %Label section
                 fside=[fside;foot_side{j}];
@@ -753,7 +552,10 @@ DCheck = [DCheck; i,j,WATHB, WATLB, WATHS, WATLS, RCHB, RCLB, RCHS ,RCLS];
                             
             %% Create table for step variables
             step_table = table(Subject,fside,Type_Activity,bag_type,start_time,end_time,step_length,lateral_dev,step_height,max_swing_vel,...
-                foot_attack_angle,contact_time,step_time,cadence);
+                foot_attack_angle,contact_time,step_time,cadence, path_length_torso, path_length_3d_torso,mean_accel_torso, max_accel_torso, min_accel_torso, std_accel_torso,...
+                range_accel_torso, skew_accel_torso, kurt_accel_torso, mean_accel_v_torso, max_accel_v_torso, min_accel_v_torso, std_accel_v_torso,...
+                range_accel_v_torso, skew_accel_v_torso, kurt_accel_v_torso, mean_jerk_torso, max_jerk_torso, min_jerk_torso, std_jerk_torso,...
+                range_jerk_torso, skew_jerk_torso, kurt_jerk_torso);
             fprintf('     Step Table Done\n')
             title(sprintf('%s::%s\n',subject{i},foot_side{j}))
             
@@ -846,3 +648,6 @@ p2 = subplot(1,2,2);
 boxplot(DCheck_HZ(:,3:end))
 title('DCheck: HZ Dimensions')
 linkaxes([p1 p2],'y')
+
+
+
