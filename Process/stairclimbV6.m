@@ -1,8 +1,7 @@
 %% Stair Climb Task
 %% Load Data
-load('C:\Users\Laraw\Documents\UVM\Research\McGinnis\Rescue_Climb\EMTdata.mat')
-load('C:\Users\Laraw\Documents\UVM\Research\McGinnis\Rescue_Climb\SegmentTimes.mat')
-load('C:\Users\Laraw\Documents\UVM\Research\McGinnis\Rescue_Climb\sigs_20190304.mat')
+load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Preprocessed\EMTdata.mat')
+load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Activity Segmentation\SegmentTimes.mat')
 locations ={'anterior_thigh_right','proximal_lateral_shank_left','dorsal_foot_left','proximal_lateral_shank_right','dorsal_foot_right','sacrum','anterior_thigh_left','medial_chest'}; 
 subject = {'S01','S02','S03','S04','S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16','S17','S18','S19','S20','S21','S22','S23','S24','S25'};
 foot={'dorsal_foot_right','dorsal_foot_left'};
@@ -26,7 +25,7 @@ NumSteps_foot = [];
 error_1 = [];
 error_2 = [];
 %% Processing Loop
-for i=[1,2,4:23]%subject  
+for i=1%[1,2,4:23]%subject  
     startTime = str2double(data.(subject{i}).annotations.StartTimestamp_ms_(1))/1000;
     calendTime = str2double(data.(subject{i}).annotations.StopTimestamp_ms_(1))/1000;
     wt_cal_start = str2double(data.(subject{i}).annotations.StartTimestamp_ms_(find(strcmp(data.S01.annotations.EventType,'Walk and Turn'),1)))/1000;
@@ -210,6 +209,8 @@ for i=[1,2,4:23]%subject
     
             [ acc_n, vel_n, pos_n, heading, distance ] = KF_6dof( acc_s, gyro_s, timestamp, zind, sigma_v, cal_still );
 
+%             figure;
+%             plot3(pos_n(:,1),pos_n(:,2),pos_n(:,3))
         %% check that KF is working
             WATHB_sind = find(tF>=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(1),1);
             WATHB_eind = max(find(tF<=subTrials(find(sum(subTrials.Load=='HB',2)==2),:).SegmentTimes_WAT(4)));
@@ -300,6 +301,8 @@ for i=[1,2,4:23]%subject
                 skew_jerk_torso = [];
                 kurt_jerk_torso = [];
                 path_length_torso =[];
+                
+                %Torso- raw
                 path_length_3d_torso =[];
                  
                 % Other
@@ -554,7 +557,7 @@ for i=[1,2,4:23]%subject
             step_table = table(Subject,fside,Type_Activity,bag_type,start_time,end_time,step_length,lateral_dev,step_height,max_swing_vel,...
                 foot_attack_angle,contact_time,step_time,cadence, path_length_torso, path_length_3d_torso,mean_accel_torso, max_accel_torso, min_accel_torso, std_accel_torso,...
                 range_accel_torso, skew_accel_torso, kurt_accel_torso, mean_accel_v_torso, max_accel_v_torso, min_accel_v_torso, std_accel_v_torso,...
-                range_accel_v_torso, skew_accel_v_torso, kurt_accel_v_torso, mean_jerk_torso, max_jerk_torso, min_jerk_torso, std_jerk_torso,...
+                range_accel_v_torso, skew_accel_v_torso, kurt_accel_v_torso, mean_jerk_torso, max_jerk_torso, std_jerk_torso,...
                 range_jerk_torso, skew_jerk_torso, kurt_jerk_torso);
             fprintf('     Step Table Done\n')
             title(sprintf('%s::%s\n',subject{i},foot_side{j}))

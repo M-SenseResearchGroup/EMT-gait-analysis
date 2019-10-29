@@ -1,5 +1,9 @@
-
-load('C:\Users\Laraw\Documents\UVM\Research\McGinnis\Rescue_Climb\EMTdata.mat')
+%% Segement activity data
+%%
+issave = 1;
+save_path = 'C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\Data\Activity Segmentation';
+%%
+load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Preprocessed\EMTdata.mat')
 
 locations ={'anterior_thigh_right','proximal_lateral_shank_left','dorsal_foot_left','proximal_lateral_shank_right','dorsal_foot_right','sacrum','anterior_thigh_left','medial_chest'}; 
 subject = {'S01','S02','S03','S04','S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16','S17','S18','S19','S20','S21','S22','S23','S24','S25'};
@@ -39,7 +43,7 @@ for i=[1,2,4:23]%subject
     for k = 1:4 %BagType
        for j=1:2 %Task: 1=walk and turn, 2 = rescue climb
             if j == 1
-                Lonly look at BSB to WAT
+                %only look at BSB to WAT
                 gS=gSall(tSall>=startTimes(AnnotInd_stand(k)) & tSall<=endTimes(AnnotInd_WAT(k)),:);%sacrum stand to end of recue climb
                 tS=tSall(tSall>=startTimes(AnnotInd_stand(k)) & tSall<=endTimes(AnnotInd_WAT(k)));%sacrum
                 gSHl=gSHlall(tSHlall>=startTimes(AnnotInd_stand(k)) & tSHlall<=endTimes(AnnotInd_WAT(k)),:);%shin
@@ -47,7 +51,7 @@ for i=[1,2,4:23]%subject
                 gSHr=gSHrall(tSHrall>=startTimes(AnnotInd_stand(k)) & tSHrall<=endTimes(AnnotInd_WAT(k)),:);%shin
                 tSHr=tSHrall(tSHrall>=startTimes(AnnotInd_stand(k)) & tSHrall<=endTimes(AnnotInd_WAT(k)));%shin
 
-                plot
+                %plot
                 figure;
                 plot(tS(tS>=startTimes(AnnotInd_WAT(k))),sqrt(sum(gS(tS>=startTimes(AnnotInd_WAT(k)),:).^2,2)),'r') %Sacrum gyro mag
                 plot(tS(tS>=startTimes(AnnotInd_WAT(k))),gS(tS>=startTimes(AnnotInd_WAT(k)),2)) %Sacrum gyro yaw
@@ -78,8 +82,12 @@ for i=[1,2,4:23]%subject
                 axis tight
                 turntimes_RC = ginput(6);
                 SegmentTimes_RC = [SegmentTimes_RC;startTimes(AnnotInd_RC(k)),turntimes_RC(:,1)',endTimes(AnnotInd_RC(k))]; 
-                    end
-                end
             end
+       end
+    end
 end
  T = table(Subject,Load,SegmentTimes_WAT,SegmentTimes_RC);
+ 
+if issave
+    save(fullfile(save_path,'SegmentTimes.mat'),'T')
+end
