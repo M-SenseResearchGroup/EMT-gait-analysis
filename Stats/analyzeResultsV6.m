@@ -239,7 +239,8 @@ for gind = 1:size(G1,1)
     xx4=cell2mat(strfind(G1.Variable(gind,:),'path_length_torso'));
     xx5=cell2mat(strfind(G1.Variable(gind,:),'range_jerk_torso'));
     xx6=cell2mat(strfind(G1.Variable(gind,:),'cadence'));
-    if isempty(xx1) && isempty(xx2) && isempty(xx3) && isempty(xx4)&& isempty(xx5)&& isempty(xx6)
+    xx7=cell2mat(strfind(G1.Variable(gind,:),'min_jerk_torso'));
+    if isempty(xx1) && isempty(xx2) && isempty(xx3) && isempty(xx4)&& isempty(xx5)&& isempty(xx6)&& isempty(xx7)
         ind_V(gind,1) = 0;
     else
         ind_V(gind,1) = 1;
@@ -309,14 +310,40 @@ bar([tor_tot;foot_tot]')
 hold on
 bar([tor_sig;foot_sig]')
 legend({'Torso','Foot','Torso*','Foot*'}) 
-xticklabels({'WT','A','D'})
+xticklabels({'WT','AS','DS'})
 ylim([0 43])
-ylabel('Number of Significant Comparisons')
+ylabel('Number of Comparisons')
 title('Significant Torso and Foot Comparisons')
 set(gca,'fontweight','Bold','fontsize',18)
 tor_sig = [mean(G.r_abs(ind_T&ind_WT&pind)),mean(G.r_abs(ind_T&ind_A&pind)),mean(G.r_abs(ind_T&ind_D&pind))];
 foot_sig = [mean(G.r_abs(~ind_T&ind_WT&pind)),mean(G.r_abs(~ind_T&ind_A&pind)),mean(G.r_abs(~ind_T&ind_D&pind))];
 
+%% Fig 1:version 2
+tor_tot = [sum(ind_T&ind_WT),sum(ind_T&ind_A),sum(ind_T&ind_D)];
+tor_sig = [sum(ind_T&ind_WT&pind),sum(ind_T&ind_A&pind),sum(ind_T&ind_D&pind)];
+foot_tot = [sum(~ind_T&ind_WT),sum(~ind_T&ind_A),sum(~ind_T&ind_D)];
+foot_sig = [sum(~ind_T&ind_WT&pind),sum(~ind_T&ind_A&pind),sum(~ind_T&ind_D&pind)];
+figure('Renderer', 'painters', 'Position', [100 100 1100 517])
+subplot(1,2,1)
+bar(tor_tot')
+hold on
+bar(tor_sig')
+ylim([0 43])
+xticklabels({'WT','AS','DS'})
+ylabel('Number of Comparisons')
+title('Torso Comparisons')
+set(gca,'fontweight','Bold','fontsize',18)
+subplot(1,2,2)
+bar(foot_tot')
+hold on
+bar(foot_sig')
+legend({'Total','Significant'}) 
+xticklabels({'WT','AS','DS'})
+ylim([0 43])
+title('Foot Comparisons')
+set(gca,'fontweight','Bold','fontsize',18)
+tor_sig = [mean(G.r_abs(ind_T&ind_WT&pind)),mean(G.r_abs(ind_T&ind_A&pind)),mean(G.r_abs(ind_T&ind_D&pind))];
+foot_sig = [mean(G.r_abs(~ind_T&ind_WT&pind)),mean(G.r_abs(~ind_T&ind_A&pind)),mean(G.r_abs(~ind_T&ind_D&pind))];
 
 %% Figure 2: What tasks and bags matter?
 tor_tot = [sum(ind_T&ind_B),sum(ind_T&ind_S),sum(ind_T&ind_H),sum(ind_T&ind_L)];
@@ -329,12 +356,48 @@ hold on
 bar([tor_sig;foot_sig]')
 legend({'Torso','Foot','Torso*','Foot*'}) 
 xticklabels({'Backpacks','Shoulder Bags','Heavy Bags','Light Bags'})
-ylabel('Number of Significant Comparisons')
+ylabel('Number of Comparisons')
 title('Significant Torso and Foot Comparisons')
 ylim([0 32])
 set(gca,'fontweight','Bold','fontsize',18)
 tor_sig = [mean(G.r_abs(ind_T&ind_B&pind)),mean(G.r_abs(ind_T&ind_S&pind)),mean(G.r_abs(ind_T&ind_H&pind)),mean(G.r_abs(ind_T&ind_L&pind))];
 foot_sig = [mean(G.r_abs(~ind_T&ind_B&pind)),mean(G.r_abs(~ind_T&ind_S&pind)),mean(G.r_abs(~ind_T&ind_H&pind)),mean(G.r_abs(~ind_T&ind_L&pind))];
+
+%% Figure 3: Task and Load TYpe 
+% torso
+tor_sig_WT = [sum(ind_T&ind_WT&pind&ind_B),sum(ind_T&ind_WT&pind&ind_S),sum(ind_T&ind_WT&pind&ind_H),sum(ind_T&ind_WT&pind&ind_L)];
+tor_sig_A = [sum(ind_T&ind_A&pind&ind_B),sum(ind_T&ind_A&pind&ind_S),sum(ind_T&ind_A&pind&ind_H),sum(ind_T&ind_A&pind&ind_L)];
+tor_sig_D = [sum(ind_T&ind_D&pind&ind_B),sum(ind_T&ind_D&pind&ind_S),sum(ind_T&ind_D&pind&ind_H),sum(ind_T&ind_D&pind&ind_L)];
+figure('Renderer', 'painters', 'Position', [100 100 850 600])
+subplot(2,1,1)
+bar([tor_sig_WT;tor_sig_A;tor_sig_D]')
+ylabel(sprintf('Torso\nParameters'))
+xticklabels({'Backpacks','Shoulder Bags','Heavy Bags','Light Bags'})
+ylim([0,10])
+title('Significant Parameters')
+xl = xlim;
+line([xl(1) xl(2)],[9 9], 'Color','k', 'linewidth',2,'linestyle','--')
+legend('WT','AS','DS','Max')
+set(gca,'YMinorTick','on')
+set(gca,'YMinorGrid','on')
+set(gca,'fontweight','Bold','fontsize',18)
+
+% Foot
+foot_sig_WT = [sum(~ind_T&ind_WT&pind&ind_B),sum(~ind_T&ind_WT&pind&ind_S),sum(~ind_T&ind_WT&pind&ind_H),sum(~ind_T&ind_WT&pind&ind_L)];
+foot_sig_A = [sum(~ind_T&ind_A&pind&ind_B),sum(~ind_T&ind_A&pind&ind_S),sum(~ind_T&ind_A&pind&ind_H),sum(~ind_T&ind_A&pind&ind_L)];
+foot_sig_D = [sum(~ind_T&ind_D&pind&ind_B),sum(~ind_T&ind_D&pind&ind_S),sum(~ind_T&ind_D&pind&ind_H),sum(~ind_T&ind_D&pind&ind_L)];
+
+subplot(2,1,2)
+bar([foot_sig_WT;foot_sig_A;foot_sig_D]')
+ylabel(sprintf('Foot\nParameters'))
+xticklabels({'Backpacks','Shoulder Bags','Heavy Bags','Light Bags'})
+ylim([0,10])
+xl = xlim;
+line([xl(1) xl(2)],[7 7], 'Color','k', 'linewidth',2,'linestyle','--')
+set(gca,'YMinorTick','on')
+set(gca,'YMinorGrid','on')
+set(gca,'fontweight','Bold','fontsize',18)
+
 
 %% Create Table
 sigT_WT = G(pind & ind_WT,[1,3,7,4]);

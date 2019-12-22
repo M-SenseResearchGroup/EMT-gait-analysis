@@ -26,9 +26,7 @@ isfigure_kfraw = 0;
 isfigure_kfrms = 0;
 isfigure_altest = 0;
     
-% Save
-save_path ='C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\Data\Processed';
-issave = 1;
+
 %% Load Data
 load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Preprocessed\EMTdata.mat')
 load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Activity Segmentation\SegmentTimes.mat')
@@ -42,6 +40,7 @@ bag={'hb','lb','hs','ls'};
 stepT = [];
 pos_start_end =[];
 SHC = [];
+
 %% Processing Loop
 for i=[1,2,4:23]%subject  
     startTime = str2double(data.(subject{i}).annotations.StartTimestamp_ms_(1))/1000;
@@ -70,7 +69,7 @@ for i=[1,2,4:23]%subject
             % Type 1- rotate grave vec during standing, pca during walking
              rotTor_aa = vrrotvec(mean_cal,[0 0 1]);
              rotTor_mat = vrrotvec2mat(rotTor_aa);
-             aTp = (rotTor_mat*aT')';          
+             aTp = (rotTor_mat*aT')'; %aTp(:,3) = vertical, aTp(:,1:2) = hz plane. Note: do not use hz axes independently          
              
              if isfigure_torso
                 figure;
@@ -89,7 +88,7 @@ for i=[1,2,4:23]%subject
     
     for j=1:2 %Foot
         fprintf('%s::%s\n',subject{i},foot_side{j})
-        zed_thresh = 1.25; 
+        zed_thresh = 1.25; %sigs(sigs(:,1)==i & sigs(:,2)==j,3); %1.25;%sigs(sigs(:,1)==i & sigs(:,2)==j,3); 
         
         %% set variables
             %foot
@@ -299,8 +298,7 @@ for i=[1,2,4:23]%subject
                 fside=[];
                 start_time = [];
                 end_time = [];
-                step_height_forCheck_b2e = [];
-                step_height_forCheck_range = [];
+                step_height_forCheck = [];
                 
                 % Torso- RMS
                 mean_accel_torso = [];
@@ -375,9 +373,7 @@ for i=[1,2,4:23]%subject
                 end
                 lateral_dev = [lateral_dev; range(pos_r(:,2))];
                 step_height = [step_height; max(pos_r(:,3))];
-                step_height_forCheck_b2e = [step_height_forCheck_b2e; pos_r(end,3)-pos_r(1,3)];
-                step_height_forCheck_range = [step_height_forCheck_range; range(pos_r(:,3))];
-                
+                step_height_forCheck = [step_height_forCheck; pos_r(end,3)-pos_r(1,3)];
                 max_swing_vel = [max_swing_vel; max(sqrt(sum(vel_r.^2,2)))];
                 foot_attack_angle = [foot_attack_angle; 180*atan2(vel_r(1,3),vel_r(1,1))/pi];
 
@@ -660,7 +656,7 @@ for i=[1,2,4:23]%subject
                     Type_Activity = [Type_Activity ; {'N'}];
                     bag_type=[bag_type;{'NA'}];
                     if isfigure_stepTrajectory && isfigure_stepTrajectory_NA
-                        plot3(pos_r(:,1), pos_r(:,2), pos_r(:,3),'g','linewidth',2)
+                        %plot3(pos_r(:,1), pos_r(:,2), pos_r(:,3),'g','linewidth',2)
                     end
                 end
             end
@@ -676,7 +672,7 @@ for i=[1,2,4:23]%subject
             fprintf('     Step Table Done\n')
             
             if ischeck_stepheight
-                stepHeight_check = table(Subject,fside,Type_Activity,bag_type,step_height_forCheck_b2e,step_height_forCheck_range); 
+                stepHeight_check = table(Subject,fside,Type_Activity,bag_type,step_height_forCheck); 
             end
             %% Plot Kinematics
             if isfigure_fulltrajectory
@@ -949,107 +945,54 @@ end
 if isfigure_stepheight
    figure
    p1 = subplot(5,1,3);
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'hb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'hb')))
    hold on
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'ls')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'lb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'hs')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'ls')))
    title('Ascent')
    ylabel('Step Height (m)')
 
    p2 = subplot(5,1,4);
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'hb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'hb')))
    hold on
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'ls')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'lb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'hs')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'ls')))
    title('Descent')
    ylabel('Step Height (m)')
 
    p3 = subplot(5,1,5);
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'hb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'hb')))
    hold on
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'ls')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'lb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'hs')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'ls')))
    title('Landing')
    ylabel('Step Height (m)')
    xlabel('Trial')
 
    p4 = subplot(5,1,2);
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'hb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'hb')))
    hold on
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'ls')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'lb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'hs')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'ls')))
    title('Turn')
    ylabel('Step Height (m)')
    legend('HB','LB','HS','LS')
 
    p5 = subplot(5,1,1);
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'hb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'hb')))
    hold on
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_b2e(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'ls')))
-   title(sprintf('Start to end\nWalk'))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'lb')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'hs')))
+   plot(SHC.step_height_forCheck(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'ls')))
+   title('Walk')
    ylabel('Step Height (m)')
    linkaxes([p1 p2 p3 p4 p5],'xy')
-   
-   
-   figure
-   p1 = subplot(5,1,3);
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'hb')))
-   hold on
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'A') & strcmp(SHC.bag_type,'ls')))
-   title('Ascent')
-   ylabel('Step Height (m)')
+   ylim([0 22])
+   xlim([1 44]) 
 
-   p2 = subplot(5,1,4);
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'hb')))
-   hold on
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'D') & strcmp(SHC.bag_type,'ls')))
-   title('Descent')
-   ylabel('Step Height (m)')
-
-   p3 = subplot(5,1,5);
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'hb')))
-   hold on
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'L') & strcmp(SHC.bag_type,'ls')))
-   title('Landing')
-   ylabel('Step Height (m)')
-   xlabel('Trial')
-
-   p4 = subplot(5,1,2);
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'hb')))
-   hold on
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'T') & strcmp(SHC.bag_type,'ls')))
-   title('Turn')
-   ylabel('Step Height (m)')
-   legend('HB','LB','HS','LS')
-
-   p5 = subplot(5,1,1);
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'hb')))
-   hold on
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'lb')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'hs')))
-   plot(SHC.step_height_forCheck_range(strcmp(SHC.Type_Activity,'W') & strcmp(SHC.bag_type,'ls')))
-   title(sprintf('Range\nWalk'))
-   ylabel('Step Height (m)')
-   linkaxes([p1 p2 p3 p4 p5],'xy')
 end
     
-if issave
-    ttt = datetime('now');
-    [y, m, d] = ymd(ttt);
-    fn = fullfile(save_path,sprintf('stepT%d%d%d.mat',y,m,d));
-    save(fn,'stepT');    
-end
