@@ -2,20 +2,21 @@
 %Lara Weed
 %07 APR 2019
 %% Load data
-    load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Processed\stepT20190407.mat')
+    load('C:\Users\Laraw\OneDrive - University of Vermont\UVM\Research\McGinnis\Rescue_Climb\data\Processed\stepT20191222.mat')
     subject = {'S01','S02','S03','S04','S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16','S17','S18','S19','S20','S21','S22','S23','S24','S25'}; %subjects
 
 %% Create indices
-    A=stepT.Type_Activity=='A'; %ascent
-    D=stepT.Type_Activity=='D'; %descent
-    Landing=stepT.Type_Activity=='L'; %Landing
-    W=stepT.Type_Activity=='W'; %Landing
-    R=stepT.fside=='R'; %Right leg
-    L=stepT.fside=='L'; %Left Leg
-    HB=sum(stepT.bag_type=='hb',2)==2; %Left Leg
-    LB=sum(stepT.bag_type=='lb',2)==2; %Left Leg
-    HS=sum(stepT.bag_type=='hs',2)==2; %Left Leg
-    LS=sum(stepT.bag_type=='ls',2)==2; %Left Leg
+    A=strcmp(stepT.Type_Activity,'A'); %ascent
+    D=strcmp(stepT.Type_Activity,'D'); %descent
+    L=strcmp(stepT.Type_Activity,'L'); %Landing
+    W=strcmp(stepT.Type_Activity,'W'); %Walk
+    T=strcmp(stepT.Type_Activity,'T'); %Turn
+    RF=strcmp(stepT.fside,'R'); %Right leg
+    LF=strcmp(stepT.fside,'L'); %Left Leg
+    HB=strcmp(stepT.bag_type,'hb'); 
+    LB=strcmp(stepT.bag_type,'lb');
+    HS=strcmp(stepT.bag_type,'hs'); 
+    LS=strcmp(stepT.bag_type,'ls'); 
     
 %% Exclusion criteria:
         %steps longer than 2.25m and shoter than 0.25 m 
@@ -66,8 +67,8 @@ for i=[1,2,4:23] % subjects
     for j = 1:12 % Trails
         t_ind = eval(ind_names{j});
         % count number of steps
-        stepsR(i,j) = sum(sub_ind & t_ind& R);
-        stepsL(i,j) = sum(sub_ind & t_ind& L);
+        stepsR(i,j) = sum(sub_ind & t_ind& RF);
+        stepsL(i,j) = sum(sub_ind & t_ind& LF);
         steps(i,j) = sum(sub_ind & t_ind);
         
         % Try to get even number of steps per trial
